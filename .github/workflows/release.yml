@@ -1,0 +1,54 @@
+name: Release Windows
+
+# Gera o instalador do TYPUS e anexa numa release (rascunho) do GitHub.
+# Para lançar: suba a versão no package.json, faça commit e crie a tag:
+#   git tag v1.0.1 && git push origin v1.0.1
+# Depois publique o rascunho em Releases: é isso que libera a atualização automática.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish (Windows x64)
+    runs-on: windows-latest
+    env:
+      WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Assinatura opcional: sem estes secrets o instalador sai sem assinatura.
+      - name: Decode signing certificate
+        if: ${{ env.WINDOWS_CERTIFICATE_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
+          "WINDOWS_CERTIFICATE_FILE=$env:RUNNER_TEMP\cert.pfx" >> $env:GITHUB_ENV
+
+      - name: Build & publish
+        run: pnpm run publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_SIGN_PARAMS: ${{ secrets.WINDOWS_SIGN_PARAMS }}

@@ -1,9 +1,9 @@
 {
-  "name": "stoat-desktop",
-  "productName": "stoat-desktop",
-  "version": "1.5.4",
+  "name": "typus-desktop",
+  "productName": "TYPUS",
+  "version": "1.0.0",
   "main": ".vite/build/main.js",
-  "repository": "stoatchat/desktop",
+  "repository": "ISAAC-MONTEIRO/typus-desktop",
   "scripts": {
     "start": "electron-forge start -- --no-sandbox",
     "package": "electron-forge package",

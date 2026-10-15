@@ -1,87 +1,50 @@
-<div align="center">
-<h1>
-  Stoat for Desktop
-  
-  [![Stars](https://img.shields.io/github/stars/stoatchat/for-desktop?style=flat-square&logoColor=white)](https://github.com/stoatchat/for-desktop/stargazers)
-  [![Forks](https://img.shields.io/github/forks/stoatchat/for-desktop?style=flat-square&logoColor=white)](https://github.com/stoatchat/for-desktop/network/members)
-  [![Pull Requests](https://img.shields.io/github/issues-pr/stoatchat/for-desktop?style=flat-square&logoColor=white)](https://github.com/stoatchat/for-desktop/pulls)
-  [![Issues](https://img.shields.io/github/issues/stoatchat/for-desktop?style=flat-square&logoColor=white)](https://github.com/stoatchat/for-desktop/issues)
-  [![Contributors](https://img.shields.io/github/contributors/stoatchat/for-desktop?style=flat-square&logoColor=white)](https://github.com/stoatchat/for-desktop/graphs/contributors)
-  [![License](https://img.shields.io/github/license/stoatchat/for-desktop?style=flat-square&logoColor=white)](https://github.com/stoatchat/for-desktop/blob/main/LICENSE)
-</h1>
-Application for Windows, macOS, and Linux.
-</div>
-<br/>
+# TYPUS Desktop (Windows)
 
-## Installation
+Cliente desktop do TYPUS: abre `https://typus-shark.duckdns.org/` numa janela própria, com ícone
+na bandeja, badge de notificações, inicialização com o Windows e atualização automática.
 
-<a href="https://repology.org/project/stoat-desktop/versions">
-    <img src="https://repology.org/badge/vertical-allrepos/stoat-desktop.svg" alt="Packaging status" align="right">
-</a>
-
-- All downloads and instructions for Stoat can be found on our [Website](https://stoat.chat/download).
-
-## Development Guide
-
-_Contribution guidelines for Desktop app TBA!_
-
-<!-- Before contributing, make yourself familiar with [our contribution guidelines](https://developers.revolt.chat/contrib.html), the [code style guidelines](./GUIDELINES.md), and the [technical documentation for this project](https://revoltchat.github.io/frontend/). -->
-
-Before getting started, you'll want to install:
-
-- [Git](https://git-scm.com/install/)
-- [mise-en-place](https://mise.jdx.dev/getting-started.html)
-
-Then proceed to setup:
+## Rodar localmente
 
 ```bash
-# clone the repository
-git clone --recursive https://github.com/stoatchat/for-desktop stoat-for-desktop
-cd stoat-for-desktop
-
-# Install tools from mise
-mise install
-
-# install all packages
-mise install:frozen
-
-# start the application
-mise dev
-# ... or build the bundle
-mise build
-# ... or build all distributables
-mise make
+pnpm install
+pnpm start
+# apontando para outro servidor (ex.: o frontend de desenvolvimento):
+pnpm start --force-server=http://localhost:5201
 ```
 
-Various useful commands for development testing:
+## Gerar o instalador localmente
 
 ```bash
-# connect to the development server
-mise exec -- pnpm start -- --force-server http://localhost:5173
-
-# test the flatpak (after `make`)
-mise exec -- pnpm install:flatpak
-mise exec -- pnpm run:flatpak
-# ... also connect to dev server like so:
-mise exec -- pnpm run:flatpak --force-server http://localhost:5173
-
-# Nix-specific instructions for testing
-nix develop
-pnpm package
-pnpm run:nix
-# ... as before:
-pnpm run:nix --force-server=http://localhost:5173
-# a better solution would be telling
-# Electron Forge where system Electron is
+pnpm install
+pnpm make
+# -> out/make/squirrel.windows/x64/TYPUS-Setup.exe
 ```
 
-### Pulling in Stoat's assets
+## Lançar uma versão (atualização automática)
 
-If you want to pull in Stoat brand assets after pulling, run the following:
+> Antes da primeira versão: crie o repositório `ISAAC-MONTEIRO/typus-desktop` no GitHub e
+> adicione-o como `origin` (`git remote add origin https://github.com/ISAAC-MONTEIRO/typus-desktop.git`).
+> Hoje este clone só tem o `upstream` do projeto de origem.
 
-```bash
-# update the assets
-mise assets
-```
+1. Suba `version` no `package.json` (ex.: `1.0.1`), faça commit.
+2. `git tag v1.0.1 && git push origin main v1.0.1`
+3. O workflow `Release Windows` gera o instalador e cria uma release **rascunho** no GitHub.
+4. Publique o rascunho. Os apps instalados baixam a atualização sozinhos
+   (via update.electronjs.org, que exige o repositório público).
 
-Currently, this is required to build, any forks are expected to provide their own assets.
+Link fixo para enviar às pessoas:
+`https://github.com/ISAAC-MONTEIRO/typus-desktop/releases/latest/download/TYPUS-Setup.exe`
+
+## Assinatura de código
+
+Sem certificado, o Windows mostra o aviso do SmartScreen e, em máquinas com
+**Smart App Control** ligado, bloqueia o app. Para assinar, configure os secrets do repositório:
+
+| Secret | Uso |
+|---|---|
+| `WINDOWS_CERTIFICATE_BASE64` + `WINDOWS_CERTIFICATE_PASSWORD` | certificado `.pfx` em base64 |
+| `WINDOWS_SIGN_PARAMS` | parâmetros extras do `signtool` (certificado em nuvem, ex.: Azure Artifact Signing) |
+
+## Licença
+
+AGPL-3.0 — veja [LICENSE](LICENSE) e [NOTICE](NOTICE). TYPUS é baseado no Stoat (AGPL-3.0).
