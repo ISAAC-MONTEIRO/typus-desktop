@@ -5,8 +5,12 @@ import { config } from "./config";
 // internal state
 let rpc: Client;
 
+// TYPUS: desativado. O clientId abaixo é a aplicação Discord do Stoat e
+// exibiria "Stoat" no perfil dos usuários.
+const DISCORD_RPC_ENABLED = false;
+
 export async function initDiscordRpc() {
-  if (!config.discordRpc) return;
+  if (!DISCORD_RPC_ENABLED || !config.discordRpc) return;
 
   // clean up existing client if one exists
   rpc?.removeAllListeners();

@@ -1,5 +1,3 @@
-import { MakerFlatpak } from "@electron-forge/maker-flatpak";
-import { MakerFlatpakOptionsConfig } from "@electron-forge/maker-flatpak/dist/Config";
 import { MakerSquirrel } from "@electron-forge/maker-squirrel";
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
@@ -13,13 +11,31 @@ import path from "node:path";
 // import { globSync } from "node:fs";
 
 const STRINGS = {
-  author: "Revolt Platforms LTD",
-  name: "Stoat",
-  execName: "stoat-desktop",
-  description: "Open source user-first chat platform.",
+  author: "TYPUS",
+  name: "TYPUS",
+  execName: "typus-desktop",
+  description: "TYPUS: plataforma de comunicação.",
 };
 
 const ASSET_DIR = "assets/desktop";
+
+/**
+ * Assinatura de código no Windows (opcional).
+ * Sem estas variáveis o build sai sem assinatura e o SmartScreen mostra aviso.
+ * - Certificado em arquivo (.pfx): WINDOWS_CERTIFICATE_FILE + WINDOWS_CERTIFICATE_PASSWORD
+ * - Certificado em nuvem / token (Azure Artifact Signing, Certum SimplySign...):
+ *   WINDOWS_SIGN_PARAMS com os parâmetros extras do signtool.exe
+ */
+const windowsSign =
+  process.env.WINDOWS_CERTIFICATE_FILE || process.env.WINDOWS_SIGN_PARAMS
+    ? {
+        certificateFile: process.env.WINDOWS_CERTIFICATE_FILE,
+        certificatePassword: process.env.WINDOWS_CERTIFICATE_PASSWORD,
+        signWithParams: process.env.WINDOWS_SIGN_PARAMS,
+        timestampServer:
+          process.env.WINDOWS_TIMESTAMP_SERVER ?? "http://timestamp.digicert.com",
+      }
+    : undefined;
 
 /**
  * Build targets for the desktop app
@@ -28,71 +44,18 @@ const makers: ForgeConfig["makers"] = [
   new MakerSquirrel({
     name: STRINGS.name,
     authors: STRINGS.author,
-    // todo: hoist this
-    iconUrl: `https://stoat.chat/app/assets/icon-DUSNE-Pb.ico`,
+    // ícone em "Adicionar ou remover programas"
+    iconUrl: `https://typus-shark.duckdns.org/assets/web/icon.ico`,
     // todo: loadingGif
     setupIcon: `${ASSET_DIR}/icon.ico`,
     description: STRINGS.description,
     exe: `${STRINGS.execName}.exe`,
-    setupExe: `${STRINGS.execName}-setup.exe`,
-    copyright: "Copyright (C) 2025 Revolt Platforms LTD",
+    setupExe: `TYPUS-Setup.exe`,
+    copyright:
+      "Copyright (C) 2025 Revolt Platforms LTD; modificações (C) 2026 TYPUS. AGPL-3.0",
+    windowsSign,
   }),
-  new MakerZIP({}),
-  new MakerFlatpak({
-    options: {
-      id: "chat.stoat.StoatDesktop",
-      description: STRINGS.description,
-      productName: STRINGS.name,
-      productDescription: STRINGS.description,
-      runtimeVersion: "25.08",
-      icon: {
-        "16x16": `${ASSET_DIR}/hicolor/16x16.png`,
-        "32x32": `${ASSET_DIR}/hicolor/32x32.png`,
-        "64x64": `${ASSET_DIR}/hicolor/64x64.png`,
-        "128x128": `${ASSET_DIR}/hicolor/128x128.png`,
-        "256x256": `${ASSET_DIR}/hicolor/256x256.png`,
-        "512x512": `${ASSET_DIR}/hicolor/512x512.png`,
-      } as unknown,
-      categories: ["Network"],
-      modules: [
-        // use the latest zypak -- Electron sandboxing for Flatpak
-        {
-          name: "zypak",
-          sources: [
-            {
-              type: "git",
-              url: "https://github.com/refi64/zypak",
-              tag: "v2025.09",
-            },
-          ],
-        },
-      ],
-      finishArgs: [
-        // default arguments found by running
-        // DEBUG=electron-installer-flatpak* pnpm make
-        "--socket=fallback-x11",
-        "--socket=wayland",
-        "--share=ipc",
-        "--share=network",
-        "--device=dri",
-        "--device=all",
-        "--socket=pulseaudio",
-        "--filesystem=xdg-run/pipewire-0",
-        "--filesystem=xdg-videos:ro",
-        "--filesystem=xdg-pictures:ro",
-        "--filesystem=xdg-download",
-        "--filesystem=xdg-run/speech-dispatcher",
-        "--talk-name=org.freedesktop.ScreenSaver",
-        "--talk-name=org.freedesktop.Notifications",
-        "--talk-name=org.kde.StatusNotifierWatcher",
-        "--talk-name=com.canonical.AppMenu.Registrar",
-        "--talk-name=com.canonical.indicator.application",
-        "--talk-name=com.canonical.Unity",
-        "--env=XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons",
-      ],
-      files: [],
-    } as MakerFlatpakOptionsConfig,
-  }),
+  new MakerZIP({}, ["win32"]),
 ];
 
 const config: ForgeConfig = {
@@ -100,6 +63,7 @@ const config: ForgeConfig = {
     asar: true,
     name: STRINGS.name,
     executableName: STRINGS.execName,
+    windowsSign,
     icon:
       process.platform === "darwin"
         ? `${ASSET_DIR}/icon.icon`
@@ -172,9 +136,11 @@ const config: ForgeConfig = {
   publishers: [
     new PublisherGithub({
       repository: {
-        owner: "stoatchat",
-        name: "for-desktop",
+        owner: "ISAAC-MONTEIRO",
+        name: "typus-desktop",
       },
+      // a release nasce como rascunho; publicar no GitHub libera a atualização
+      draft: true,
     }),
   ],
 };
