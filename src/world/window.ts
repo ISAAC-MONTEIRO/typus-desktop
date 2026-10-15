@@ -34,4 +34,13 @@ contextBridge.exposeInMainWorld("native", {
     ipcRenderer.send("screenPickerCallback", idx, audio),
 
   isWayland: () => ipcRenderer.invoke("getIsWayland"),
+
+  // TYPUS: which of the known apps/games is running (opt-in in the app)
+  detectActivity: (known: string[]) =>
+    ipcRenderer.invoke("activity:detect", known),
+
+  // TYPUS: Developer mode metrics
+  devMetrics: () => ipcRenderer.invoke("dev:metrics"),
+  devDiagnostics: () => ipcRenderer.invoke("dev:diagnostics"),
+  gameMetrics: (exe: string) => ipcRenderer.invoke("dev:game", exe),
 });

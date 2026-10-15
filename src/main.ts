@@ -5,6 +5,7 @@ import { IUpdateInfo, updateElectronApp } from "update-electron-app";
 import { BrowserWindow, Notification, app, shell } from "electron";
 import started from "electron-squirrel-startup";
 
+import { initActivity } from "./native/activity";
 import { initAutoLaunch } from "./native/autoLaunch";
 import { config } from "./native/config";
 import { initDiscordRpc } from "./native/discordRpc";
@@ -44,8 +45,8 @@ const acquiredLock = app.requestSingleInstanceLock();
 
 const onNotifyUser = (_info: IUpdateInfo) => {
   const notification = new Notification({
-    title: "Update Available",
-    body: "Restart the app to install the update.",
+    title: "Atualização disponível",
+    body: "Reinicie o TYPUS para instalar a atualização.",
     silent: true,
   });
 
@@ -72,10 +73,11 @@ if (acquiredLock) {
     initDiscordRpc();
     initVirtualMic();
     initAutoLaunch();
+    initActivity();
 
     // Windows specific fix for notifications
     if (process.platform === "win32") {
-      app.setAppUserModelId("chat.stoat.notifications");
+      app.setAppUserModelId("com.typus.notifications");
     }
   });
 
