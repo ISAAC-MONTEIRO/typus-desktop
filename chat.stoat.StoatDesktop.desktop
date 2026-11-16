@@ -1,11 +1,11 @@
 [Desktop Entry]
-Name=Stoat
-Comment=Open source, user-first chat platform
-Exec=stoat-desktop
+Name=TYPUS
+Comment=TYPUS: plataforma de comunicação
+Exec=typus-desktop
 Terminal=false
 Type=Application
 Icon=chat.stoat.StoatDesktop
 Categories=Network;InstantMessaging
-StartupWMClass=stoat-desktop
+StartupWMClass=typus-desktop
 X-Desktop-File-Install-Version=0.26
 X-Flatpak=chat.stoat.StoatDesktop
