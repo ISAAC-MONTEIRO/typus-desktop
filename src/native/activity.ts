@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import os from "node:os";
 
-import { app, ipcMain } from "electron";
+import { BrowserWindow, app, ipcMain } from "electron";
 
 /**
  * Run a Windows command and return its output (empty on failure)
@@ -144,6 +144,35 @@ async function sampleGame(exe: string): Promise<GameSample | null> {
 }
 
 /**
+ * "File description" of a running program, as Windows reports it (e.g.
+ * "Notepad" for notepad.exe). The name goes in through an environment
+ * variable, never the script. Null when not running or not on Windows.
+ */
+const DESCRIBE_QUERY = `
+$ErrorActionPreference = 'SilentlyContinue'
+$p = Get-Process -Name $env:TYPUS_PROC | Where-Object { $_.Description } | Select-Object -First 1
+if ($p) { $p.Description }
+`;
+
+const descriptions = new Map<string, string | null>();
+
+async function describeProgram(exe: string): Promise<string | null> {
+  if (process.platform !== "win32" || !EXE.test(exe)) return null;
+  const cached = descriptions.get(exe);
+  if (cached) return cached;
+  const output = await run(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", DESCRIBE_QUERY],
+    { TYPUS_PROC: exe.replace(/\.exe$/i, "") },
+  );
+  const description = output.trim().split(/\r?\n/)[0]?.trim().slice(0, 64);
+  const value = description || null;
+  // only cache real answers: the program may not be running yet
+  if (value) descriptions.set(exe, value);
+  return value;
+}
+
+/**
  * Wire up activity detection and Developer mode metrics
  *
  * - "activity:detect": the renderer sends the executables it knows and gets
@@ -152,6 +181,8 @@ async function sampleGame(exe: string): Promise<GameSample | null> {
  * - "dev:diagnostics": versions and GPU acceleration (no paths, user or host
  *   names)
  * - "dev:game": CPU, memory and GPU of the detected game
+ * - "activity:describe": name of a running program as Windows reports it
+ * - on quit, the web app is asked to clear the activity from the status
  */
 export function initActivity() {
   ipcMain.handle("activity:detect", async (_event, known: unknown) => {
@@ -161,6 +192,28 @@ export function initActivity() {
       (name) => typeof name === "string" && running.has(name.toLowerCase()),
     );
     return hit ?? null;
+  });
+
+  ipcMain.handle("activity:describe", (_event, exe: unknown) =>
+    typeof exe === "string" ? describeProgram(exe.toLowerCase()) : null,
+  );
+
+  // quitting: give the web app a moment to remove "Playing X" from the
+  // status, so it does not stay there after the app is gone
+  let cleared = false;
+  app.on("before-quit", (event) => {
+    if (cleared) return;
+    const window = BrowserWindow.getAllWindows()[0];
+    if (!window || window.isDestroyed()) return;
+    event.preventDefault();
+    cleared = true;
+    const done = () => app.quit();
+    const timer = setTimeout(done, 1500);
+    ipcMain.once("activity:cleared", () => {
+      clearTimeout(timer);
+      done();
+    });
+    window.webContents.send("activity:clear");
   });
 
   ipcMain.handle("dev:metrics", async () => {
