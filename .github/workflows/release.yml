@@ -7,12 +7,16 @@ name: Release
 # O workflow cria UMA release rascunho e cada sistema anexa os seus arquivos.
 # Depois publique o rascunho em Releases: é isso que libera a atualização automática.
 #
-# Testar sem publicar: rode o workflow à mão (Actions > Release > Run workflow).
-# Os instaladores ficam em "Artifacts" da execução e nenhuma release é criada.
+# Testar sem publicar (os instaladores ficam em "Artifacts" e nenhuma release é criada):
+# - envie uma branch release-test/<nome>: git push origin HEAD:release-test/meu-teste
+#   (com "sem-mac" no nome, os Macs ficam de fora: release-test/sem-mac)
+# - ou rode à mão em Actions > Release > Run workflow (quando este arquivo estiver na main)
 on:
   push:
     tags:
       - "v*"
+    branches:
+      - "release-test/**"
   workflow_dispatch:
 
 permissions:
@@ -35,27 +39,39 @@ jobs:
             || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft \
                  --title "TYPUS $TAG" --notes "Instaladores do TYPUS $TAG."
 
+  # systems to build: all of them, minus the Macs on a "sem-mac" test branch
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        env:
+          REF: ${{ github.ref_name }}
+        run: |
+          all='[
+            {"name":"Windows x64","os":"windows-latest","arch":"x64"},
+            {"name":"macOS Apple Silicon","os":"macos-latest","arch":"arm64"},
+            {"name":"macOS Intel","os":"macos-latest","arch":"x64"},
+            {"name":"Linux x64","os":"ubuntu-latest","arch":"x64"}
+          ]'
+          if [[ "$REF" == *sem-mac* ]]; then
+            all=$(echo "$all" | jq -c '[.[] | select(.os != "macos-latest")]')
+          else
+            all=$(echo "$all" | jq -c '.')
+          fi
+          echo "matrix={\"include\":$all}" >> "$GITHUB_OUTPUT"
+          echo "$all" | jq -r '.[].name'
+
   build:
     name: Build (${{ matrix.name }})
-    needs: draft
-    # runs on tags (after the draft) and on manual runs (draft skipped)
-    if: ${{ always() && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
+    needs: [draft, plan]
+    # runs on tags (after the draft) and on test runs (draft skipped)
+    if: ${{ always() && needs.plan.result == 'success' && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: Windows x64
-            os: windows-latest
-            arch: x64
-          - name: macOS Apple Silicon
-            os: macos-latest
-            arch: arm64
-          - name: macOS Intel
-            os: macos-latest
-            arch: x64
-          - name: Linux x64
-            os: ubuntu-latest
-            arch: x64
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     env:
       WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
