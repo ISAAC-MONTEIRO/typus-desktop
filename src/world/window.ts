@@ -38,6 +38,21 @@ contextBridge.exposeInMainWorld("native", {
   // TYPUS: which of the known apps/games is running (opt-in in the app)
   detectActivity: (known: string[]) =>
     ipcRenderer.invoke("activity:detect", known),
+  // TYPUS: name of a running program as Windows reports it
+  describeActivity: (exe: string) =>
+    ipcRenderer.invoke("activity:describe", exe),
+  // TYPUS: the app is quitting; the callback clears the activity and the
+  // app waits for it (up to 1.5 s)
+  onActivityClear: (callback: () => Promise<unknown> | unknown) => {
+    ipcRenderer.removeAllListeners("activity:clear");
+    ipcRenderer.on("activity:clear", async () => {
+      try {
+        await callback();
+      } finally {
+        ipcRenderer.send("activity:cleared");
+      }
+    });
+  },
 
   // TYPUS: Developer mode metrics
   devMetrics: () => ipcRenderer.invoke("dev:metrics"),
