@@ -86,6 +86,8 @@ const makers: ForgeConfig["makers"] = [
         section: "net",
         homepage: "https://github.com/ISAAC-MONTEIRO/typus-desktop",
         maintainer: "TYPUS",
+        // xz: installs on every Debian / Ubuntu (zstd needs dpkg 1.21.18+)
+        compression: "xz",
       },
     },
     ["linux"],
