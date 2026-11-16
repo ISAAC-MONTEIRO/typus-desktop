@@ -1,3 +1,5 @@
+import { MakerDeb } from "@electron-forge/maker-deb";
+import { MakerDMG } from "@electron-forge/maker-dmg";
 import { MakerSquirrel } from "@electron-forge/maker-squirrel";
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
@@ -33,7 +35,8 @@ const windowsSign =
         certificatePassword: process.env.WINDOWS_CERTIFICATE_PASSWORD,
         signWithParams: process.env.WINDOWS_SIGN_PARAMS,
         timestampServer:
-          process.env.WINDOWS_TIMESTAMP_SERVER ?? "http://timestamp.digicert.com",
+          process.env.WINDOWS_TIMESTAMP_SERVER ??
+          "http://timestamp.digicert.com",
       }
     : undefined;
 
@@ -55,7 +58,38 @@ const makers: ForgeConfig["makers"] = [
       "Copyright (C) 2025 Revolt Platforms LTD; modificações (C) 2026 TYPUS. AGPL-3.0",
     windowsSign,
   }),
-  new MakerZIP({}, ["win32"]),
+  // .zip on every system (on macOS it is also what the auto-updater downloads)
+  new MakerZIP({}, ["win32", "darwin", "linux"]),
+
+  // macOS: drag-to-Applications disk image (unsigned without an Apple account)
+  new MakerDMG(
+    {
+      name: STRINGS.name,
+      title: STRINGS.name,
+      icon: `${ASSET_DIR}/icon.icns`,
+      format: "ULFO",
+    },
+    ["darwin"],
+  ),
+
+  // Linux: .deb for Debian / Ubuntu and derivatives
+  new MakerDeb(
+    {
+      options: {
+        name: STRINGS.execName,
+        productName: STRINGS.name,
+        genericName: "Comunicação",
+        description: STRINGS.description,
+        bin: STRINGS.execName,
+        icon: `${ASSET_DIR}/icon-1024.png`,
+        categories: ["Network", "Chat"],
+        section: "net",
+        homepage: "https://github.com/ISAAC-MONTEIRO/typus-desktop",
+        maintainer: "TYPUS",
+      },
+    },
+    ["linux"],
+  ),
 ];
 
 const config: ForgeConfig = {
@@ -64,10 +98,12 @@ const config: ForgeConfig = {
     name: STRINGS.name,
     executableName: STRINGS.execName,
     windowsSign,
-    icon:
-      process.platform === "darwin"
-        ? `${ASSET_DIR}/icon.icon`
-        : `${ASSET_DIR}/icon`,
+    // no extension: the packager picks icon.ico (Windows) or icon.icns (macOS,
+    // generated from icon-1024.png by the release workflow)
+    icon: `${ASSET_DIR}/icon`,
+    // macOS bundle identity
+    appBundleId: "chat.typus.desktop",
+    appCategoryType: "public.app-category.social-networking",
     // extraResource: [
     //   // include all the asset files
     //   ...globSync(ASSET_DIR + "/**/*"),

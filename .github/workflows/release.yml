@@ -1,9 +1,14 @@
-name: Release Windows
+name: Release
 
-# Gera o instalador do TYPUS e anexa numa release (rascunho) do GitHub.
-# Para lançar: suba a versão no package.json, faça commit e crie a tag:
+# Gera os instaladores do TYPUS para Windows, macOS e Linux.
+#
+# Lançar uma versão: suba a versão no package.json, faça commit e crie a tag:
 #   git tag v1.0.1 && git push origin v1.0.1
+# O workflow cria UMA release rascunho e cada sistema anexa os seus arquivos.
 # Depois publique o rascunho em Releases: é isso que libera a atualização automática.
+#
+# Testar sem publicar: rode o workflow à mão (Actions > Release > Run workflow).
+# Os instaladores ficam em "Artifacts" da execução e nenhuma release é criada.
 on:
   push:
     tags:
@@ -14,9 +19,44 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build & publish (Windows x64)
-    runs-on: windows-latest
+  # one draft release per tag, created before the builds so the parallel jobs
+  # all attach to it instead of racing to create their own
+  draft:
+    name: Create draft release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft (if missing)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft \
+                 --title "TYPUS $TAG" --notes "Instaladores do TYPUS $TAG."
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: draft
+    # runs on tags (after the draft) and on manual runs (draft skipped)
+    if: ${{ always() && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            arch: x64
+          - name: macOS Apple Silicon
+            os: macos-latest
+            arch: arm64
+          - name: macOS Intel
+            os: macos-latest
+            arch: x64
+          - name: Linux x64
+            os: ubuntu-latest
+            arch: x64
+    runs-on: ${{ matrix.os }}
     env:
       WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
 
@@ -38,17 +78,55 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Assinatura opcional: sem estes secrets o instalador sai sem assinatura.
+      # .deb packaging needs fakeroot
+      - name: Linux packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fakeroot
+
+      # macOS icon (.icns) built from the 1024 px PNG with the system tools
+      - name: macOS icon
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          SRC=assets/desktop/icon-1024.png
+          SET=$RUNNER_TEMP/icon.iconset
+          mkdir -p "$SET"
+          for size in 16 32 128 256 512; do
+            sips -z $size $size "$SRC" --out "$SET/icon_${size}x${size}.png" >/dev/null
+            double=$((size * 2))
+            sips -z $double $double "$SRC" --out "$SET/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          iconutil -c icns "$SET" -o assets/desktop/icon.icns
+
+      # Assinatura opcional no Windows: sem estes secrets o instalador sai sem assinatura.
       - name: Decode signing certificate
-        if: ${{ env.WINDOWS_CERTIFICATE_BASE64 != '' }}
+        if: ${{ runner.os == 'Windows' && env.WINDOWS_CERTIFICATE_BASE64 != '' }}
         shell: pwsh
         run: |
           [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
           "WINDOWS_CERTIFICATE_FILE=$env:RUNNER_TEMP\cert.pfx" >> $env:GITHUB_ENV
 
+      # tag: build and attach to the draft release
       - name: Build & publish
-        run: pnpm run publish
+        if: startsWith(github.ref, 'refs/tags/')
+        run: pnpm run publish -- --arch=${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
           WINDOWS_SIGN_PARAMS: ${{ secrets.WINDOWS_SIGN_PARAMS }}
+
+      # manual run: build only, files go to the run's artifacts
+      - name: Build only (test)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: pnpm run make -- --arch=${{ matrix.arch }}
+        env:
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_SIGN_PARAMS: ${{ secrets.WINDOWS_SIGN_PARAMS }}
+
+      - name: Upload test build
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: typus-desktop-${{ runner.os }}-${{ matrix.arch }}
+          path: out/make/**
+          if-no-files-found: error

@@ -1,7 +1,14 @@
-# TYPUS Desktop (Windows)
+# TYPUS Desktop (Windows, macOS e Linux)
 
 Cliente desktop do TYPUS: abre `https://typus-shark.duckdns.org/` numa janela própria, com ícone
-na bandeja, badge de notificações, inicialização com o Windows e atualização automática.
+na bandeja, badge de notificações, inicialização com o sistema e atualização automática
+(Windows; no macOS ela exige o app assinado, no Linux instale o `.deb` novo).
+
+| Sistema | Instalador |
+|---|---|
+| Windows x64 | `TYPUS-Setup.exe` (e `.zip`) |
+| macOS (Apple Silicon e Intel) | `TYPUS.dmg` (e `.zip`) |
+| Linux x64 | `typus-desktop_<versão>_amd64.deb` (e `.zip`) |
 
 ## Rodar localmente
 
@@ -17,20 +24,30 @@ pnpm start --force-server=http://localhost:5201
 ```bash
 pnpm install
 pnpm make
-# -> out/make/squirrel.windows/x64/TYPUS-Setup.exe
+# Windows -> out/make/squirrel.windows/x64/TYPUS-Setup.exe
 ```
+
+Cada sistema gera só os seus instaladores (o `.dmg` precisa de um Mac, o `.deb` de um Linux
+com `fakeroot`). Para gerar os três sem ter as máquinas, use o GitHub Actions (abaixo).
+
+## Testar os instaladores sem publicar
+
+Em **Actions > Release > Run workflow**, escolha a branch e rode. Os instaladores de todos
+os sistemas ficam em **Artifacts** da execução; nenhuma release é criada.
 
 ## Lançar uma versão (atualização automática)
 
-> Antes da primeira versão: crie o repositório `ISAAC-MONTEIRO/typus-desktop` no GitHub e
-> adicione-o como `origin` (`git remote add origin https://github.com/ISAAC-MONTEIRO/typus-desktop.git`).
-> Hoje este clone só tem o `upstream` do projeto de origem.
-
 1. Suba `version` no `package.json` (ex.: `1.0.1`), faça commit.
 2. `git tag v1.0.1 && git push origin main v1.0.1`
-3. O workflow `Release Windows` gera o instalador e cria uma release **rascunho** no GitHub.
-4. Publique o rascunho. Os apps instalados baixam a atualização sozinhos
+3. O workflow `Release` cria **uma** release rascunho e cada sistema anexa os seus instaladores.
+4. Publique o rascunho. Os apps instalados no Windows baixam a atualização sozinhos
    (via update.electronjs.org, que exige o repositório público).
+
+## macOS sem assinatura
+
+Sem uma conta Apple Developer, o app sai sem assinatura e o macOS bloqueia a primeira
+abertura. Para abrir: clique com o botão direito no TYPUS em Aplicativos > **Abrir** (ou
+Ajustes do Sistema > Privacidade e Segurança > **Abrir Mesmo Assim**).
 
 Link fixo para enviar às pessoas:
 `https://github.com/ISAAC-MONTEIRO/typus-desktop/releases/latest/download/TYPUS-Setup.exe`

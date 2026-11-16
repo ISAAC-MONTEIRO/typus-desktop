@@ -49,7 +49,8 @@ export function createMainWindow() {
     minHeight: 300,
     width: 1280,
     height: 720,
-    backgroundColor: "#191919",
+    // TYPUS dark background while the web app loads
+    backgroundColor: "#1A151C",
     frame: isMacOS ? true : !config.customFrame,
     titleBarStyle: isMacOS ? "hidden" : "default",
     trafficLightPosition: isMacOS ? { x: 8, y: 8 } : undefined,
